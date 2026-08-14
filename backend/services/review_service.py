@@ -8,8 +8,8 @@ from datetime import datetime
 from typing import Dict, Optional
 from sqlalchemy import func
 from sqlalchemy.orm import Session
-from src.api.schemas.review import ReviewCreateRequest
-from src.database.models import Suspect, ReviewDecision
+from schemas.review import ReviewCreateRequest
+from database.models import Suspect, ReviewDecision
 
 ALLOWED_DECISIONS = {"SUPPORTED", "NOT_SUPPORTED", "INSUFFICIENT_EVIDENCE"}
 

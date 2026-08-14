@@ -3,3 +3,10 @@
 /docs/
 /new data/
 .env
+__pycache__/
+*.py[cod]
+*.db-journal
+*.db
+.venv/
+venv/
+.idea/

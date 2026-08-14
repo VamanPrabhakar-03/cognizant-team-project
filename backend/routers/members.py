@@ -3,13 +3,13 @@
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from src.api.dependencies import get_db
-from src.api.schemas.member import (
+from dependencies import get_db
+from schemas.member import (
     MemberListResponse,
     MemberDetailResponse,
     TimelineResponse,
 )
-from src.api.services.member_service import (
+from services.member_service import (
     get_members,
     get_member_detail,
     get_member_timeline,

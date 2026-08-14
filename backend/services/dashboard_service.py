@@ -6,12 +6,12 @@ Provides database aggregation queries for the dashboard endpoints.
 from typing import Dict, List
 from sqlalchemy import func
 from sqlalchemy.orm import Session
-from src.api.schemas.dashboard import (
+from schemas.dashboard import (
     DashboardMetrics,
     HCCDistributionItem,
     ScoreDistribution,
 )
-from src.database.models import Member, MemberHCCBaseline, Suspect
+from database.models import Member, MemberHCCBaseline, Suspect
 
 
 def get_dashboard_metrics(db: Session) -> DashboardMetrics:

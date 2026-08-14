@@ -3,14 +3,14 @@
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from src.api.dependencies import get_db
-from src.api.schemas.suspect import ( 
+from dependencies import get_db
+from schemas.suspect import (
     SuspectSchema,
     SuspectListResponse,
     SuspectDetailResponse,
     SuspectStatusUpdate,
 )
-from src.api.services.suspect_service import (
+from services.suspect_service import (
     get_suspects,
     get_suspect_detail,
     update_suspect_status,

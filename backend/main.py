@@ -5,8 +5,8 @@ Medicare Advantage Risk Adjustment and HCC Documentation Review Assistant API.
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from src.api.config import settings
-from src.api.routers import (
+from config import settings
+from routers import (
     dashboard_router,
     health_router,
     members_router,
@@ -19,7 +19,7 @@ app = FastAPI(
     version=settings.VERSION,
     description=(
         "Backend REST API for Medicare Advantage Risk Adjustment & "
-        "HCC Documentation Review Assistant"
+        "HCC Documentation Suspecting Assistant"
     ),
     docs_url="/docs",
     redoc_url="/redoc",

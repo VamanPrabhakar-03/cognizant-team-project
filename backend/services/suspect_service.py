@@ -8,7 +8,7 @@ import math
 from typing import Dict, Optional, List
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
-from src.database.models import Member, MemberHCCBaseline, MemberTimeline, Suspect
+from database.models import Member, MemberHCCBaseline, MemberTimeline, Suspect
 
 
 def get_suspects(

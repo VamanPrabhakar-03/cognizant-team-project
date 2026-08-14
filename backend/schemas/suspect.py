@@ -2,7 +2,7 @@
 
 from typing import List, Optional
 from pydantic import BaseModel, Field, field_validator
-from src.api.schemas.member import (
+from schemas.member import (
     MemberBase,
     BaselineHCCSchema,
     TimelineEventSchema,

@@ -2,14 +2,14 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from src.api.dependencies import get_db
-from src.api.schemas.review import (
+from dependencies import get_db
+from schemas.review import (
     ReviewCreateRequest,
     ReviewDecisionListResponse,
     ReviewDecisionSchema,
     ReviewStatsResponse,
 )
-from src.api.services.review_service import (
+from services.review_service import (
     create_review_decision,
     get_review_stats,
     get_reviews,

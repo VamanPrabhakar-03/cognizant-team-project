@@ -86,7 +86,7 @@ class MemberStats(BaseModel):
 
 
 # Import SuspectSchema after defining member primitives to prevent circular imports
-from src.api.schemas.suspect import SuspectSchema
+from schemas.suspect import SuspectSchema
 
 
 class MemberDetailResponse(BaseModel):

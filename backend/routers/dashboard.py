@@ -2,14 +2,15 @@
 
 from typing import List
 from fastapi import APIRouter, Depends
+# pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
-from src.api.dependencies import get_db
-from src.api.schemas.dashboard import (
+from dependencies import get_db
+from schemas.dashboard import (
     DashboardMetrics,
     HCCDistributionItem,
     ScoreDistribution,
 )
-from src.api.services.dashboard_service import (
+from services.dashboard_service import (
     get_dashboard_metrics,
     get_hcc_distribution,
     get_score_distribution,
