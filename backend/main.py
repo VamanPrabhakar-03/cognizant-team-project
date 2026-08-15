@@ -3,6 +3,13 @@
 Medicare Advantage Risk Adjustment and HCC Documentation Review Assistant API.
 """
 
+import sys
+from pathlib import Path
+
+BACKEND_DIR = Path(__file__).resolve().parent
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from config import settings
@@ -12,6 +19,7 @@ from routers import (
     members_router,
     reviews_router,
     suspects_router,
+    pipeline_router,
 )
 
 app = FastAPI(
@@ -41,6 +49,7 @@ app.include_router(dashboard_router, prefix=settings.API_V1_STR)
 app.include_router(members_router, prefix=settings.API_V1_STR)
 app.include_router(suspects_router, prefix=settings.API_V1_STR)
 app.include_router(reviews_router, prefix=settings.API_V1_STR)
+app.include_router(pipeline_router, prefix=settings.API_V1_STR)
 
 @app.get("/")
 def root():

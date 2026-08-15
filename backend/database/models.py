@@ -16,7 +16,7 @@ Modeled strictly after the prepared datasets in data/:
 from datetime import date, datetime
 from typing import List, Optional
 from sqlalchemy import (
-    String, Integer, Boolean, Float, Date, DateTime, Text,
+    String, Integer, Boolean, Float, Date, DateTime, Text, JSON,
     ForeignKey, Index, UniqueConstraint
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -49,6 +49,8 @@ class Member(Base):
     timeline_events: Mapped[List["MemberTimeline"]] = relationship("MemberTimeline", back_populates="member")
     baselines: Mapped[List["MemberHCCBaseline"]] = relationship("MemberHCCBaseline", back_populates="member")
     suspects: Mapped[List["Suspect"]] = relationship("Suspect", back_populates="member")
+    claims: Mapped[List["Claim"]] = relationship("Claim", back_populates="member")
+    suspect_evidence: Mapped[List["SuspectEvidence"]] = relationship("SuspectEvidence", back_populates="member")
 
 
 class HCCMapping(Base):
@@ -189,14 +191,181 @@ class Suspect(Base):
     priority_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0, index=True)
 
     status: Mapped[str] = mapped_column(String(30), nullable=False, default="PENDING_REVIEW", index=True)
+    gap_type: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    latest_context: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    priority: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    priority_level: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    diagnosis_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    unique_claim_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    unique_event_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    distinct_evidence_dates: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    distinct_evidence_months: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    distinct_sources: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    principal_diagnosis_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    prescription_support_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    prescription_drug_codes: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    repeated_claim_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    repeated_date_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    source_diversity_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    principal_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    prescription_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    reason_flags: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    evidence_summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    evidence_references: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    pipeline_run_id: Mapped[Optional[str]] = mapped_column(
+        String(100), ForeignKey("pipeline_runs.run_id", ondelete="SET NULL"), nullable=True, index=True
+    )
 
     member: Mapped["Member"] = relationship("Member", back_populates="suspects")
     decisions: Mapped[List["ReviewDecision"]] = relationship("ReviewDecision", back_populates="suspect")
+    pipeline_run: Mapped[Optional["PipelineRun"]] = relationship("PipelineRun", back_populates="suspects")
+    evidence: Mapped[List["SuspectEvidence"]] = relationship("SuspectEvidence", back_populates="suspect")
+    llm_reviews: Mapped[List["LLMReview"]] = relationship("LLMReview", back_populates="suspect")
 
     __table_args__ = (
         Index("ix_suspect_bene_status", "bene_id", "status"),
         Index("ix_suspect_type_status", "suspect_type", "status"),
         Index("ix_suspect_priority_status", "priority_score", "status"),
+        Index("ix_suspect_pipeline_run", "pipeline_run_id"),
+    )
+
+
+class PipelineRun(Base):
+    """One execution of the claims-to-review pipeline."""
+
+    __tablename__ = "pipeline_runs"
+
+    run_id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    batch_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
+    source_file: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    status: Mapped[str] = mapped_column(String(30), nullable=False, default="RUNNING", index=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    input_rows: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    valid_rows: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    rejected_rows: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    claims_processed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    suspects_created: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    evidence_created: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    llm_reviews_created: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+
+    batches: Mapped[List["ClaimBatch"]] = relationship("ClaimBatch", back_populates="pipeline_run")
+    suspects: Mapped[List["Suspect"]] = relationship("Suspect", back_populates="pipeline_run")
+    evidence: Mapped[List["SuspectEvidence"]] = relationship("SuspectEvidence", back_populates="pipeline_run")
+    llm_reviews: Mapped[List["LLMReview"]] = relationship("LLMReview", back_populates="pipeline_run")
+
+
+class ClaimBatch(Base):
+    """Metadata for a received claims batch."""
+
+    __tablename__ = "claim_batches"
+
+    batch_id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    pipeline_run_id: Mapped[Optional[str]] = mapped_column(
+        String(100), ForeignKey("pipeline_runs.run_id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    source_file: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    source_system: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    received_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    row_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    status: Mapped[str] = mapped_column(String(30), nullable=False, default="RECEIVED", index=True)
+
+    pipeline_run: Mapped[Optional["PipelineRun"]] = relationship("PipelineRun", back_populates="batches")
+    claims: Mapped[List["Claim"]] = relationship("Claim", back_populates="batch")
+
+
+class Claim(Base):
+    """Normalized claim line retained for batch traceability."""
+
+    __tablename__ = "claims"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    batch_id: Mapped[str] = mapped_column(
+        String(100), ForeignKey("claim_batches.batch_id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    claim_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
+    bene_id: Mapped[str] = mapped_column(
+        String(50), ForeignKey("members.bene_id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    claim_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True, index=True)
+    diagnosis_code: Mapped[Optional[str]] = mapped_column(String(20), nullable=True, index=True)
+    source: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    is_principal: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    raw_payload: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+
+    batch: Mapped["ClaimBatch"] = relationship("ClaimBatch", back_populates="claims")
+    member: Mapped["Member"] = relationship("Member", back_populates="claims")
+
+    __table_args__ = (
+        Index("ix_claims_batch_bene_date", "batch_id", "bene_id", "claim_date"),
+        UniqueConstraint("batch_id", "claim_id", name="uq_claims_batch_claim_id"),
+    )
+
+
+class SuspectEvidence(Base):
+    """Atomic evidence items supporting a suspect and its reviewer explanation."""
+
+    __tablename__ = "suspect_evidence"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    suspect_id: Mapped[str] = mapped_column(
+        String(100), ForeignKey("suspects.suspect_id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    pipeline_run_id: Mapped[Optional[str]] = mapped_column(
+        String(100), ForeignKey("pipeline_runs.run_id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    bene_id: Mapped[str] = mapped_column(
+        String(50), ForeignKey("members.bene_id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    evidence_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    evidence_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True, index=True)
+    diagnosis_code: Mapped[Optional[str]] = mapped_column(String(20), nullable=True, index=True)
+    claim_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
+    source: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    evidence_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    evidence_strength: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    evidence_metadata: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+
+    suspect: Mapped["Suspect"] = relationship("Suspect", back_populates="evidence")
+    pipeline_run: Mapped[Optional["PipelineRun"]] = relationship("PipelineRun", back_populates="evidence")
+    member: Mapped["Member"] = relationship("Member", back_populates="suspect_evidence")
+
+    __table_args__ = (
+        Index("ix_evidence_suspect_date", "suspect_id", "evidence_date"),
+        Index("ix_evidence_bene_hcc_context", "bene_id", "diagnosis_code", "evidence_date"),
+    )
+
+
+class LLMReview(Base):
+    """Versioned structured LLM output prepared for human review."""
+
+    __tablename__ = "llm_reviews"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    suspect_id: Mapped[str] = mapped_column(
+        String(100), ForeignKey("suspects.suspect_id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    pipeline_run_id: Mapped[Optional[str]] = mapped_column(
+        String(100), ForeignKey("pipeline_runs.run_id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    status: Mapped[str] = mapped_column(String(30), nullable=False, default="PENDING", index=True)
+    model_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    prompt_version: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    input_payload: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    output_payload: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    reviewer_summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    generated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+
+    suspect: Mapped["Suspect"] = relationship("Suspect", back_populates="llm_reviews")
+    pipeline_run: Mapped[Optional["PipelineRun"]] = relationship("PipelineRun", back_populates="llm_reviews")
+
+    __table_args__ = (
+        Index("ix_llm_reviews_suspect_status", "suspect_id", "status"),
     )
 
 

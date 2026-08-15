@@ -26,7 +26,7 @@ def create_review_endpoint(
     try:
         return create_review_decision(db, payload)
     except ValueError as ve:
-        raise HTTPException(status_code=400, description=str(ve))
+        raise HTTPException(status_code=400, detail=str(ve))
 
 
 @router.get("", response_model=ReviewDecisionListResponse)

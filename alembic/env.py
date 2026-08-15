@@ -6,11 +6,13 @@ import os
 import sys
 from pathlib import Path
 
-# Add project root to sys.path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+# Add project root and backend to sys.path
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+sys.path.insert(0, str(PROJECT_ROOT / "backend"))
 
-from src.database.config import get_database_url
-from src.database.models import Base
+from backend.database.config import get_database_url
+from backend.database.models import Base
 
 config = context.config
 

@@ -29,19 +29,36 @@ from sqlalchemy import select, func, text
 from sqlalchemy.orm import Session
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
+BACKEND_DIR = Path(__file__).resolve().parent.parent
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.database.session import engine, SessionLocal, init_db
-from src.database.models import (
-    Member,
-    HCCMapping,
-    DiagnosisEvent,
-    PrescriptionEvent,
-    MemberTimeline,
-    MemberHCCBaseline,
-    Suspect,
-    IngestionRejection,
-)
+try:
+    from database.session import engine, SessionLocal, init_db
+    from database.models import (
+        Member,
+        HCCMapping,
+        DiagnosisEvent,
+        PrescriptionEvent,
+        MemberTimeline,
+        MemberHCCBaseline,
+        Suspect,
+        IngestionRejection,
+    )
+except ImportError:
+    from backend.database.session import engine, SessionLocal, init_db
+    from backend.database.models import (
+        Member,
+        HCCMapping,
+        DiagnosisEvent,
+        PrescriptionEvent,
+        MemberTimeline,
+        MemberHCCBaseline,
+        Suspect,
+        IngestionRejection,
+    )
 
 DATA_DIR = PROJECT_ROOT / "data"
 CHUNK_SIZE = 50_000
@@ -532,7 +549,11 @@ def run_ingestion():
         results["events_prescription"] = ingest_events_prescription(db)
         results["member_timeline"] = ingest_member_timeline(db)
         results["member_hcc_baseline"] = ingest_member_hcc_baseline(db)
-        results["suspects"] = ingest_suspects(db)
+        # NOTE: Suspects are no longer loaded from CSV. The old suspects.csv
+        # was built by the V1 scoring engine (build_hcc_suspects.py) with only
+        # 4 signals and does not match the final engine output schema.
+        # Suspects are now created exclusively by the incremental pipeline
+        # via POST /api/pipeline/batches → engine_service.py.
 
         total_time = time.time() - start_total
         print("\n" + "=" * 70)

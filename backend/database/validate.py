@@ -19,24 +19,44 @@ import time
 from pathlib import Path
 from typing import Dict, Any
 
+# pyrefly: ignore [missing-import]
 from sqlalchemy import select, func, text
+# pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
+BACKEND_DIR = Path(__file__).resolve().parent.parent
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.database.session import SessionLocal
-from src.database.models import (
-    Member,
-    HCCMapping,
-    DiagnosisEvent,
-    PrescriptionEvent,
-    MemberTimeline,
-    MemberHCCBaseline,
-    Suspect,
-    ReviewDecision,
-    IngestionRejection,
-)
+try:
+    from database.session import SessionLocal
+    from database.models import (
+        Member,
+        HCCMapping,
+        DiagnosisEvent,
+        PrescriptionEvent,
+        MemberTimeline,
+        MemberHCCBaseline,
+        Suspect,
+        ReviewDecision,
+        IngestionRejection,
+    )
+except ImportError:
+    from backend.database.session import SessionLocal
+    from backend.database.models import (
+        Member,
+        HCCMapping,
+        DiagnosisEvent,
+        PrescriptionEvent,
+        MemberTimeline,
+        MemberHCCBaseline,
+        Suspect,
+        ReviewDecision,
+        IngestionRejection,
+    )
 
 def run_database_validation() -> bool:
     print("=" * 70)

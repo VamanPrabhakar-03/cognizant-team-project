@@ -1,7 +1,15 @@
-"""API Configuration Module."""
-
 import os
+from pathlib import Path
 from typing import List
+from dotenv import load_dotenv
+
+BACKEND_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = BACKEND_DIR.parent
+
+for env_path in [BACKEND_DIR / ".env", PROJECT_ROOT / ".env"]:
+    if env_path.exists():
+        load_dotenv(dotenv_path=env_path, override=True)
+        break
 
 
 class APIConfig:

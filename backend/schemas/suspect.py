@@ -1,6 +1,6 @@
 """Suspect Pydantic Schemas."""
 
-from typing import List, Optional
+from typing import Any, List, Optional
 from pydantic import BaseModel, Field, field_validator
 from schemas.member import (
     MemberBase,
@@ -16,6 +16,27 @@ class SuspectSchema(BaseModel):
     hcc_v28: str = Field(..., description="HCC V28 Category Code")
     suspect_type: str = Field(..., description="Suspect Type: EMERGING or RECAPTURE")
     priority_score: float = Field(..., description="Priority Score between 0.0 and 1.0")
+    gap_type: Optional[str] = None
+    latest_context: Optional[str] = None
+    priority: Optional[str] = None
+    priority_level: Optional[str] = None
+    diagnosis_count: int = 0
+    unique_claim_count: int = 0
+    unique_event_count: int = 0
+    distinct_evidence_dates: int = 0
+    distinct_evidence_months: int = 0
+    distinct_sources: int = 0
+    principal_diagnosis_count: int = 0
+    prescription_support_count: int = 0
+    prescription_drug_codes: Optional[List[str]] = None
+    repeated_claim_score: float = 0.0
+    repeated_date_score: float = 0.0
+    source_diversity_score: float = 0.0
+    principal_score: float = 0.0
+    prescription_score: float = 0.0
+    reason_flags: Optional[List[str]] = None
+    evidence_summary: Optional[str] = None
+    evidence_references: Optional[List[dict[str, Any]]] = None
     status: str = Field("PENDING_REVIEW", description="Review status (PENDING_REVIEW, REVIEWED, etc.)")
     supporting_diagnosis_codes: Optional[List[str]] = Field(default_factory=list, description="Supporting ICD-10 diagnosis codes")
     supporting_claim_ids: Optional[List[str]] = Field(default_factory=list, description="Supporting claim IDs")
