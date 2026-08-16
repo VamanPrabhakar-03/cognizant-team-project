@@ -6,6 +6,7 @@ from .members import router as members_router
 from .reviews import router as reviews_router
 from .suspects import router as suspects_router
 from .pipeline import router as pipeline_router
+from .llm_reviews import router as llm_reviews_router
 
 __all__ = [
     "health_router",
@@ -14,4 +15,5 @@ __all__ = [
     "suspects_router",
     "reviews_router",
     "pipeline_router",
+    "llm_reviews_router",
 ]

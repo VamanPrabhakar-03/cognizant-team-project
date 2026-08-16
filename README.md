@@ -83,3 +83,25 @@ The validation suite verifies:
 3. Duplicate primary key checks.
 4. Foreign key referential integrity (checking for orphan events/suspects).
 5. ICD-10 to CMS-HCC V28 crosswalk mapping coverage.
+
+### 7. Generating an LLM Reviewer Summary
+
+The pipeline stores an evidence JSON payload for each generated suspect in the
+`llm_reviews` table. To turn that payload into an evidence-grounded text summary
+for a human reviewer, configure the following environment variables:
+
+```env
+OPENAI_API_KEY=your_api_key
+OPENAI_MODEL=gpt-5.6
+```
+
+After a claims batch creates an `llm_reviews` record, call:
+
+```http
+POST /api/llm-reviews/{review_id}/generate
+```
+
+The endpoint submits only the stored evidence JSON to the configured model and
+saves the structured model output in `output_payload` and the human-readable text
+in `reviewer_summary`. The generated summary is decision support only; a qualified
+human must review the source record and make any coding decision.

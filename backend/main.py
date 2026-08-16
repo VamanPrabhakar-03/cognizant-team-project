@@ -20,6 +20,7 @@ from routers import (
     reviews_router,
     suspects_router,
     pipeline_router,
+    llm_reviews_router,
 )
 
 app = FastAPI(
@@ -50,6 +51,7 @@ app.include_router(members_router, prefix=settings.API_V1_STR)
 app.include_router(suspects_router, prefix=settings.API_V1_STR)
 app.include_router(reviews_router, prefix=settings.API_V1_STR)
 app.include_router(pipeline_router, prefix=settings.API_V1_STR)
+app.include_router(llm_reviews_router, prefix=settings.API_V1_STR)
 
 @app.get("/")
 def root():
