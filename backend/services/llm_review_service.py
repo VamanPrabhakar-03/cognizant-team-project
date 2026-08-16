@@ -10,8 +10,8 @@ from sqlalchemy.orm import Session
 from database.models import LLMReview
 
 
-PROMPT_VERSION = "hcc-human-review-v1"
-DEFAULT_MODEL = "gpt-5.6"
+PROMPT_VERSION = "hcc-human-review-gemini-v1"
+DEFAULT_MODEL = "gemini-3.6-flash"
 
 
 class HumanReviewOutput(BaseModel):
@@ -32,30 +32,36 @@ SYSTEM_PROMPT = (
 
 
 def generate_llm_review(db: Session, review_id: int) -> LLMReview:
-    """Call the configured model and save its constrained review response."""
+    """Call Gemini and save its constrained review response."""
     review = db.get(LLMReview, review_id)
     if review is None:
         raise ValueError(f"LLM review '{review_id}' not found.")
     if not review.input_payload:
         raise ValueError(f"LLM review '{review_id}' has no input JSON payload.")
-    if not os.getenv("OPENAI_API_KEY"):
-        raise ValueError("OPENAI_API_KEY is not configured.")
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        raise ValueError("GEMINI_API_KEY is not configured.")
 
     try:
-        from openai import OpenAI
+        from google import genai
 
-        model = os.getenv("OPENAI_MODEL", DEFAULT_MODEL)
-        response = OpenAI().responses.parse(
+        model = os.getenv("GEMINI_MODEL", DEFAULT_MODEL)
+        client = genai.Client(api_key=api_key)
+        response = client.interactions.create(
             model=model,
-            input=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": json.dumps(review.input_payload)},
-            ],
-            text_format=HumanReviewOutput,
+            input=(
+                f"{SYSTEM_PROMPT}\n\n"
+                f"Evidence JSON to analyze:\n{json.dumps(review.input_payload)}"
+            ),
+            response_format={
+                "type": "text",
+                "mime_type": "application/json",
+                "schema": HumanReviewOutput.model_json_schema(),
+            },
         )
-        parsed = response.output_parsed
-        if parsed is None:
+        if not response.output_text:
             raise ValueError("The model returned no structured review output.")
+        parsed = HumanReviewOutput.model_validate_json(response.output_text)
 
         review.output_payload = parsed.model_dump()
         review.reviewer_summary = parsed.reviewer_summary

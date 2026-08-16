@@ -1,6 +1,6 @@
 alembic
 fastapi
-openai
+google-genai
 pandas
 psycopg[binary]
 pydantic

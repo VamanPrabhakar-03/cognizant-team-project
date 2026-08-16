@@ -91,8 +91,8 @@ The pipeline stores an evidence JSON payload for each generated suspect in the
 for a human reviewer, configure the following environment variables:
 
 ```env
-OPENAI_API_KEY=your_api_key
-OPENAI_MODEL=gpt-5.6
+GEMINI_API_KEY=your_gemini_api_key
+GEMINI_MODEL=gemini-3.6-flash
 ```
 
 After a claims batch creates an `llm_reviews` record, call:
@@ -101,7 +101,7 @@ After a claims batch creates an `llm_reviews` record, call:
 POST /api/llm-reviews/{review_id}/generate
 ```
 
-The endpoint submits only the stored evidence JSON to the configured model and
+The endpoint submits only the stored evidence JSON to the configured Gemini model and
 saves the structured model output in `output_payload` and the human-readable text
 in `reviewer_summary`. The generated summary is decision support only; a qualified
 human must review the source record and make any coding decision.
