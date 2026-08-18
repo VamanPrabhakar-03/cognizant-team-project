@@ -1,0 +1,44 @@
+{
+  "model": "standardized logistic regression",
+  "class_weight": "balanced",
+  "cross_validation": {
+    "method": "5-fold StratifiedKFold",
+    "shuffle": true,
+    "random_state": 42
+  },
+  "feature_period": "2019-01-01 through 2021-12-31",
+  "training_target_period": "2022-01-01 through 2022-12-31",
+  "temporal_holdout_period": "2023-01-01 through 2023-12-31",
+  "training_rows": 7671,
+  "training_positive_rate": 0.872897927258506,
+  "cv_metrics": {
+    "roc_auc": 0.8754368471035139,
+    "average_precision": 0.9726053269170282,
+    "balanced_accuracy": 0.8143791930888705,
+    "precision": 0.9620253164556962,
+    "recall": 0.8626045400238949,
+    "f1": 0.9096062992125984,
+    "positive_rate_at_threshold": 0.7826880458871073
+  },
+  "holdout_metrics": {
+    "roc_auc": 0.6679952419805111,
+    "average_precision": 0.6303570814561825,
+    "balanced_accuracy": 0.6127778991558259,
+    "precision": 0.5246338215712384,
+    "recall": 0.906528616623526,
+    "f1": 0.66462836056932,
+    "positive_rate_at_threshold": 0.783209490288098
+  },
+  "features": [
+    "diagnosis_count",
+    "unique_icd_count",
+    "active_years",
+    "days_since_last_diagnosis",
+    "unique_claim_count",
+    "source_count",
+    "inpatient_count",
+    "outpatient_count",
+    "carrier_count",
+    "principal_diagnosis_count"
+  ]
+}

@@ -1,0 +1,96 @@
+{
+  "training_file": "data\\ml_training\\hcc_augmented_3500_full_dataset.csv",
+  "scoring_file": "data\\suspects_with_evidence_final.csv",
+  "model_file": "models\\ml_prioritization\\hcc_svm_model.pkl",
+  "model": "SVC RBF",
+  "class_weight": "balanced",
+  "features": [
+    "hcc_v28",
+    "gap_type",
+    "suspect_type",
+    "status",
+    "latest_context",
+    "diagnosis_count",
+    "unique_claim_count",
+    "unique_event_count",
+    "distinct_evidence_dates",
+    "distinct_evidence_months",
+    "distinct_sources",
+    "principal_diagnosis_count",
+    "prescription_support_count"
+  ],
+  "training_rows": 2441,
+  "validation_rows": 529,
+  "test_rows": 530,
+  "class_distribution": {
+    "HIGH": 2536,
+    "MEDIUM": 538,
+    "LOW": 426
+  },
+  "validation": {
+    "accuracy": 0.9319470699432892,
+    "balanced_accuracy": 0.942772633744856,
+    "macro_f1": 0.8994467141283747
+  },
+  "test": {
+    "accuracy": 0.9113207547169812,
+    "balanced_accuracy": 0.9116291887125221,
+    "macro_f1": 0.8678694513371933,
+    "classification_report": {
+      "LOW": {
+        "precision": 0.6739130434782609,
+        "recall": 0.96875,
+        "f1-score": 0.7948717948717948,
+        "support": 64.0
+      },
+      "MEDIUM": {
+        "precision": 0.8734177215189873,
+        "recall": 0.8518518518518519,
+        "f1-score": 0.8625,
+        "support": 81.0
+      },
+      "HIGH": {
+        "precision": 0.9805013927576601,
+        "recall": 0.9142857142857143,
+        "f1-score": 0.946236559139785,
+        "support": 385.0
+      },
+      "accuracy": 0.9113207547169812,
+      "macro avg": {
+        "precision": 0.8426107192516361,
+        "recall": 0.9116291887125221,
+        "f1-score": 0.8678694513371933,
+        "support": 530.0
+      },
+      "weighted avg": {
+        "precision": 0.9271137857308412,
+        "recall": 0.9113207547169812,
+        "f1-score": 0.9151610757370039,
+        "support": 530.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        62,
+        0,
+        2
+      ],
+      [
+        7,
+        69,
+        5
+      ],
+      [
+        23,
+        10,
+        352
+      ]
+    ]
+  },
+  "inference_rows": 1175,
+  "inference_priority_distribution": {
+    "HIGH": 843,
+    "MEDIUM": 175,
+    "LOW": 157
+  }
+}

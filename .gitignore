@@ -10,3 +10,11 @@ __pycache__/
 .venv/
 venv/
 .idea/
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+stitch_hcc_review_intelligence/

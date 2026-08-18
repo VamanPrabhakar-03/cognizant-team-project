@@ -71,24 +71,18 @@ def get_member_detail(db: Session, bene_id: str) -> Optional[Dict]:
         .all()
     )
 
-    total_claims = (
-        db.query(func.count(MemberTimeline.id))
-        .filter(
-            MemberTimeline.bene_id == bene_id,
-            MemberTimeline.claim_id.isnot(None),
+    # Consolidated stats query in a single DB round trip
+    stats_row = (
+        db.query(
+            func.count(func.distinct(MemberTimeline.claim_id)).label("total_claims"),
+            func.count(MemberTimeline.id).filter(func.lower(MemberTimeline.event_type) == "diagnosis").label("total_diagnoses"),
         )
-        .scalar()
-        or 0
+        .filter(MemberTimeline.bene_id == bene_id)
+        .first()
     )
-    total_diagnoses = (
-        db.query(func.count(MemberTimeline.id))
-        .filter(
-            MemberTimeline.bene_id == bene_id,
-            MemberTimeline.event_type == "DIAGNOSIS",
-        )
-        .scalar()
-        or 0
-    )
+
+    total_claims = stats_row.total_claims if stats_row else 0
+    total_diagnoses = stats_row.total_diagnoses if stats_row else 0
 
     baseline_count = len(baseline_hccs)
     suspect_count = len(suspects)
@@ -121,10 +115,13 @@ def get_member_timeline(
     query = db.query(MemberTimeline).filter(MemberTimeline.bene_id == bene_id)
 
     if year:
-        pattern = year.strip() + "%"
-        query = query.filter(
-            cast(MemberTimeline.event_date, String).like(pattern)
-        )
+        clean_year = year.strip()
+        if clean_year.isdigit():
+            y = int(clean_year)
+            query = query.filter(
+                MemberTimeline.event_date >= f"{y}-01-01",
+                MemberTimeline.event_date <= f"{y}-12-31",
+            )
 
     if source:
         query = query.filter(MemberTimeline.source == source.strip())
@@ -147,7 +144,7 @@ def get_member_timeline(
         .all()
     )
 
-    return{
+    return {
         "bene_id": bene_id,
         "items": items,
         "total": total,

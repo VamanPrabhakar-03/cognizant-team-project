@@ -1,0 +1,126 @@
+@import "tailwindcss";
+
+@theme {
+  /* Brand Primary Colors */
+  --color-primary: #5300b7;
+  --color-primary-container: #6d28d9;
+  --color-primary-fixed: #ebddff;
+  --color-primary-fixed-dim: #d3bbff;
+  --color-on-primary: #ffffff;
+  --color-on-primary-container: #dac5ff;
+  --color-on-primary-fixed: #250059;
+  --color-on-primary-fixed-variant: #5b00c5;
+  --color-inverse-primary: #d3bbff;
+
+  /* Secondary Colors */
+  --color-secondary: #6f46b9;
+  --color-secondary-container: #b188ff;
+  --color-secondary-fixed: #ebdcff;
+  --color-secondary-fixed-dim: #d3bbff;
+  --color-on-secondary: #ffffff;
+  --color-on-secondary-container: #44118d;
+  --color-on-secondary-fixed: #260059;
+  --color-on-secondary-fixed-variant: #572ba0;
+
+  /* Tertiary / Emerging Gap Colors */
+  --color-tertiary: #81004c;
+  --color-tertiary-container: #ab0467;
+  --color-tertiary-fixed: #ffd9e4;
+  --color-tertiary-fixed-dim: #ffb0cd;
+  --color-on-tertiary: #ffffff;
+  --color-on-tertiary-container: #ffbcd4;
+  --color-on-tertiary-fixed: #3e0022;
+  --color-on-tertiary-fixed-variant: #8c0053;
+
+  /* Surface & Background */
+  --color-surface: #fdf7ff;
+  --color-surface-bright: #fdf7ff;
+  --color-surface-dim: #ded6ef;
+  --color-surface-tint: #7331df;
+  --color-surface-variant: #e7dff8;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f8f1ff;
+  --color-surface-container: #f2ebff;
+  --color-surface-container-high: #ede4fe;
+  --color-surface-container-highest: #e7dff8;
+  --color-on-surface: #1d192b;
+  --color-on-surface-variant: #4a4455;
+  --color-inverse-surface: #322e41;
+  --color-inverse-on-surface: #f5eeff;
+
+  --color-background: #fdf7ff;
+  --color-on-background: #1d192b;
+
+  /* Error & Alerts */
+  --color-error: #ba1a1a;
+  --color-error-container: #ffdad6;
+  --color-on-error: #ffffff;
+  --color-on-error-container: #93000a;
+
+  /* Borders & Outlines */
+  --color-outline: #7b7486;
+  --color-outline-variant: #ccc3d7;
+
+  /* Typography */
+  --font-manrope: "Manrope", sans-serif;
+  --font-inter: "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+}
+
+@layer base {
+  html, body {
+    margin: 0;
+    padding: 0;
+    font-family: var(--font-inter), sans-serif;
+    background-color: var(--color-background);
+    color: var(--color-on-background);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-manrope), sans-serif;
+  }
+
+  .font-mono, code, pre, .font-data-tabular {
+    font-family: var(--font-mono), monospace;
+  }
+}
+
+/* Custom Webkit scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #ccc3d7;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #7b7486;
+}
+
+/* Material Symbols Outlined styling */
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  vertical-align: middle;
+}
+
+.material-symbols-outlined.filled {
+  font-variation-settings: 'FILL' 1;
+}
