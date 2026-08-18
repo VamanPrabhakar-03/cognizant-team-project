@@ -1,0 +1,17 @@
+.git
+.github
+.venv
+venv
+node_modules
+frontend/node_modules
+frontend/dist
+backend/.env
+.env
+__pycache__
+*.py[cod]
+*.db
+data
+new data
+docs
+stitch_hcc_review_intelligence
+dist
