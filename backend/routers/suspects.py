@@ -16,7 +16,7 @@ from services.suspect_service import (
     update_suspect_status,
 )
 
-router = APIRouter(prefix="/suspects", tags=["Suspects / Review Queny"])
+router = APIRouter(prefix="/suspects", tags=["Suspects / Review Queue"])
 
 
 @router.get("", response_model=SuspectListResponse)
@@ -25,14 +25,16 @@ def get_suspects_endpoint(
     min_score: Optional[float] = Query(None, ge=0.0, le=1.0, description="Minimum priority score"),
     hcc: Optional[str] = Query(None, description="Filter by HCC category"),
     status: Optional[str] = Query(None, description="Filter by review status (e.g. PENDING_REVIEW)"),
-    sort: str = Query("priority_score", description="Sort field (priority_score, etc.)"),
-    order: str = Query("desc", description="Sort order (asc or desc)"),
+    ml_priority: Optional[str] = Query(None, description="Filter by ML priority (HIGH, MEDIUM, LOW)"),
+    sort: str = Query("ml_review_rank", description="Sort field (ml_review_rank, ml_priority_score, etc.)"),
+    order: str = Query("asc", description="Sort order (asc or desc)"),
     page: int = Query(1, ge=1, description="Page number"),
     size: int = Query(20, ge=1, le=100, description="Items per page"),
     db: Session = Depends(get_db),
 ):
     result = get_suspects(
-        db=db, type=type, min_score=min_score, hcc=hcc, status=status, sort=sort, order=order, page=page, size=size
+        db=db, type=type, min_score=min_score, hcc=hcc, status=status, ml_priority=ml_priority,
+        sort=sort, order=order, page=page, size=size
     )
     return result
 

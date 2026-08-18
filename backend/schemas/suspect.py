@@ -34,6 +34,14 @@ class SuspectSchema(BaseModel):
     source_diversity_score: float = 0.0
     principal_score: float = 0.0
     prescription_score: float = 0.0
+    ml_priority: Optional[str] = None
+    ml_priority_score: Optional[float] = None
+    ml_low_probability: Optional[float] = None
+    ml_medium_probability: Optional[float] = None
+    ml_high_probability: Optional[float] = None
+    ml_model_version: Optional[str] = None
+    ml_review_rank: Optional[int] = None
+    ml_top_100: Optional[bool] = None
     reason_flags: Optional[List[str]] = None
     evidence_summary: Optional[str] = None
     evidence_references: Optional[List[dict[str, Any]]] = None
@@ -75,9 +83,35 @@ class SuspectStatusUpdate(BaseModel):
     status: str = Field(..., description="New status (e.g. PENDING_REVIEW, REVIEWED)")
 
 
+class LLMReviewSchema(BaseModel):
+    """LLM clinical documentation review schema."""
+    id: Optional[int] = None
+    suspect_id: str
+    pipeline_run_id: Optional[str] = None
+    status: str = "PENDING"
+    model_name: Optional[str] = None
+    prompt_version: Optional[str] = None
+    input_payload: Optional[dict[str, Any]] = None
+    output_payload: Optional[dict[str, Any]] = None
+    reviewer_summary: Optional[str] = None
+    error_message: Optional[str] = None
+    generated_at: Optional[str] = None
+
+    @field_validator("generated_at", mode="before")
+    @classmethod
+    def parse_datetime_str(cls, v):
+        if v is not None and not isinstance(v, str):
+            return str(v)
+        return v
+
+    class Config:
+        from_attributes = True
+
+
 class SuspectDetailResponse(BaseModel):
     """Detailed result for a single suspect record."""
     suspect: SuspectSchema
     member: Optional[MemberBase] = None
     baseline_hccs: List[BaselineHCCSchema] = []
     supporting_events: List[TimelineEventSchema] = []
+    llm_review: Optional[LLMReviewSchema] = None

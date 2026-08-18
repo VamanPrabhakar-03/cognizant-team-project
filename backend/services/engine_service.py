@@ -18,6 +18,8 @@ from database.models import (
     PrescriptionEvent,
 )
 from services.suspect_persistence import persist_engine_candidates
+from services.ml_priority_service import score_candidates
+from services.llm_service import generate_candidate_summaries
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -26,7 +28,6 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 from suspect_engine.suspect_engine import (  # noqa: E402
-    assign_priority,
     build_hcc_sets,
     build_llm_record,
     detect_gaps,
@@ -36,6 +37,14 @@ from suspect_engine.suspect_engine import (  # noqa: E402
     reason_flags,
     score_features,
 )
+
+
+def assign_priority(score: float) -> str:
+    if score >= 0.75:
+        return "HIGH"
+    if score >= 0.50:
+        return "MEDIUM"
+    return "LOW"
 
 
 def _timeline_frame(rows: list[MemberTimeline], claims: list[Claim], hcc_by_code: dict[str, str]) -> pd.DataFrame:
@@ -169,16 +178,30 @@ def run_suspect_engine_for_run(
         events = events if events is not None else empty_events
         rx = prescription_support(events, prescriptions)
         row = {**suspect, **score_features(events, rx, reference_date=reference_date)}
+        recency = float(row.get("recency_score", 0.0) or 0.0)
+        frequency = float(row.get("frequency_score", 0.0) or 0.0)
+        persistence = float(row.get("persistence_score", 0.0) or 0.0)
+        diversity = float(row.get("source_diversity_score", 0.0) or 0.0)
+        priority_score = round(0.30 * recency + 0.25 * frequency + 0.20 * persistence + 0.25 * diversity, 3)
+        row["priority_score"] = priority_score
         row["suspect_type"] = row["gap_type"]
         row["latest_context"] = latest_context(row["gap_type"], row["hcc_v28"], latest_hccs, row["bene_id"])
-        row["priority"] = assign_priority(row["priority_score"])
+        row["priority"] = assign_priority(priority_score)
         row["priority_level"] = row["priority"]
         row["reason_flags"] = reason_flags(row)
         row["evidence_summary"] = evidence_summary(row)
         candidates.append(row)
         llm_candidates.append(build_llm_record(row))
 
-    counts = persist_engine_candidates(db, run_id, candidates, llm_candidates)
+    # ML ranks only deterministic candidates; it never creates or removes gaps.
+    ml_scores = score_candidates(candidates)
+    for row, ml_score in zip(candidates, ml_scores):
+        row.update(ml_score)
+
+    # LLM summarization with combined gap, evidence, and ML priority context
+    llm_summaries = generate_candidate_summaries(candidates, llm_candidates)
+
+    counts = persist_engine_candidates(db, run_id, candidates, llm_candidates, llm_summaries)
     return {"run_id": run_id, **counts}
 
 

@@ -8,7 +8,7 @@ import math
 from typing import Dict, Optional, List
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
-from database.models import Member, MemberHCCBaseline, MemberTimeline, Suspect
+from database.models import LLMReview, Member, MemberHCCBaseline, MemberTimeline, Suspect
 
 
 def get_suspects(
@@ -17,8 +17,9 @@ def get_suspects(
     min_score: Optional[float] = None,
     hcc: Optional[str] = None,
     status: Optional[str] = None,
-    sort: str = "priority_score",
-    order: str = "desc",
+    ml_priority: Optional[str] = None,
+    sort: str = "ml_review_rank",
+    order: str = "asc",
     page: int = 1,
     size: int = 20,
 ) -> Dict:
@@ -36,7 +37,10 @@ def get_suspects(
     if status:
         query = query.filter(Suspect.status == status.strip())
 
-    sort_col = getattr(Suspect, sort, Suspect.priority_score)
+    if ml_priority:
+        query = query.filter(Suspect.ml_priority == ml_priority.upper().strip())
+
+    sort_col = getattr(Suspect, sort, Suspect.ml_review_rank)
     if order.lower() == "asc":
         query = query.order_by(sort_col.asc())
     else:
@@ -55,7 +59,6 @@ def get_suspects(
         "size": size,
         "pages": pages,
     }
-
 
 
 def get_suspect_detail(db: Session, suspect_id: str) -> Optional[Dict]:
@@ -83,13 +86,20 @@ def get_suspect_detail(db: Session, suspect_id: str) -> Optional[Dict]:
 
     supporting_events = timeline_query.order_by(MemberTimeline.event_date.desc()).limit(50).all()
 
+    llm_review = (
+        db.query(LLMReview)
+        .filter(LLMReview.suspect_id == suspect.suspect_id)
+        .order_by(LLMReview.id.desc())
+        .first()
+    )
+
     return {
         "suspect": suspect,
         "member": member,
         "baseline_hccs": baseline_hccs,
         "supporting_events": supporting_events,
+        "llm_review": llm_review,
     }
-
 
 
 def update_suspect_status(db: Session, suspect_id: str, status: str) -> Optional[Suspect]:

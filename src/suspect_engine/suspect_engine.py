@@ -20,6 +20,7 @@ DATA_DIR = BASE_DIR / "data"
 BASELINE_FILE = DATA_DIR / "member_hcc_baseline_2020_2021.csv"
 TIMELINE_FILE = DATA_DIR / "member_timeline.csv"
 PRESCRIPTION_FILE = DATA_DIR / "events_prescription.csv"
+HCC_MAPPING_FILE = DATA_DIR / "hcc_mapping.csv"
 OUTPUT_FILE = DATA_DIR / "suspects_with_evidence_final.csv"
 LLM_INPUT_FILE = DATA_DIR / "suspect_llm_input.json"
 
@@ -32,6 +33,23 @@ PRESCRIPTION_WINDOW_DAYS = 30
 
 def clean_ids(series: pd.Series) -> pd.Series:
     return series.astype("string").str.strip()
+
+
+def assign_priority(score: float) -> str:
+    if score >= 0.75:
+        return "HIGH"
+    elif score >= 0.50:
+        return "MEDIUM"
+    return "LOW"
+
+
+
+def load_hcc_descriptions() -> dict[int, str]:
+    df = pd.read_csv(HCC_MAPPING_FILE, usecols=["hcc_v28", "description"])
+    df["hcc_v28"] = pd.to_numeric(df["hcc_v28"], errors="coerce")
+    df = df.dropna(subset=["hcc_v28", "description"]).copy()
+    df["hcc_v28"] = df["hcc_v28"].astype(int)
+    return df.groupby("hcc_v28")["description"].first().to_dict()
 
 
 def load_baseline() -> pd.DataFrame:
@@ -152,7 +170,7 @@ def score_features(events: pd.DataFrame, rx: pd.DataFrame, reference_date: pd.Ti
         "frequency_score": 0.0, "recency_score": 0.0, "persistence_score": 0.0,
         "repeated_claim_score": 0.0, "repeated_date_score": 0.0,
         "source_diversity_score": 0.0, "principal_score": 0.0,
-        "prescription_score": 0.0, "priority_score": 0.0,
+        "prescription_score": 0.0,
         "evidence_references": [],
     }
     if events.empty:
@@ -177,11 +195,6 @@ def score_features(events: pd.DataFrame, rx: pd.DataFrame, reference_date: pd.Ti
     source_diversity = min(sources / 2.0, 1.0)
     principal_score = min(principal / 2.0, 1.0)
     prescription_score = min(len(rx) / 2.0, 1.0)
-    priority_score = (
-        0.18 * frequency + 0.18 * persistence + 0.15 * repeated_claim
-        + 0.15 * repeated_date + 0.15 * recency + 0.08 * source_diversity
-        + 0.08 * principal_score + 0.03 * prescription_score
-    )
 
     return {
         "diagnosis_count": count, "unique_claim_count": claims, "unique_event_count": event_count,
@@ -197,16 +210,8 @@ def score_features(events: pd.DataFrame, rx: pd.DataFrame, reference_date: pd.Ti
         "persistence_score": round(persistence, 4), "repeated_claim_score": round(repeated_claim, 4),
         "repeated_date_score": round(repeated_date, 4), "source_diversity_score": round(source_diversity, 4),
         "principal_score": round(principal_score, 4), "prescription_score": round(prescription_score, 4),
-        "priority_score": round(priority_score, 4), "evidence_references": evidence_refs(events),
+        "evidence_references": evidence_refs(events),
     }
-
-
-def assign_priority(score: float) -> str:
-    if score >= 0.75:
-        return "HIGH"
-    if score >= 0.50:
-        return "MEDIUM"
-    return "LOW"
 
 
 def latest_context(gap_type: str, hcc: int, latest_hccs: dict[str, set[int]], bene_id: str) -> str:
@@ -217,7 +222,7 @@ def latest_context(gap_type: str, hcc: int, latest_hccs: dict[str, set[int]], be
 
 
 def reason_flags(row: dict) -> list[str]:
-    flags = [f'{row["priority"]}_PRIORITY']
+    flags = []
     if row["recency_score"] >= 0.75:
         flags.append("RECENT_EVIDENCE")
     if row["frequency_score"] >= 0.75:
@@ -255,9 +260,11 @@ def evidence_summary(row: dict) -> str:
 
 def build_llm_record(row: dict) -> dict:
     return {
-        "bene_id": str(row["bene_id"]), "hcc_v28": int(row["hcc_v28"]),
-        "gap_type": row["gap_type"], "latest_context": row["latest_context"],
-        "priority": {"score": float(row["priority_score"]), "level": row["priority"]},
+        "bene_id": str(row["bene_id"]),
+        "hcc_v28": int(row["hcc_v28"]),
+        "hcc_description": str(row.get("hcc_description", "")),
+        "gap_type": row["gap_type"],
+        "latest_context": row["latest_context"],
         "evidence_flags": row["reason_flags"],
         "evidence": {
             "diagnosis_count": int(row["diagnosis_count"]),
@@ -283,6 +290,15 @@ def main() -> None:
     print("UPDATED HCC SUSPECT ENGINE")
     print("=" * 72)
 
+    if OUTPUT_FILE.exists():
+        OUTPUT_FILE.unlink()
+        print(f"Deleted existing file: {OUTPUT_FILE}")
+
+    fallback_file = DATA_DIR / "suspects_with_evidence_final_updated.csv"
+    if fallback_file.exists():
+        fallback_file.unlink()
+
+    hcc_descriptions = load_hcc_descriptions()
     baseline = load_baseline()
     timeline = load_timeline()
     prescriptions = load_prescriptions()
@@ -304,24 +320,35 @@ def main() -> None:
         events = events if events is not None else empty_events
         rx = prescription_support(events, prescriptions)
         row = {**suspect, **score_features(events, rx)}
+        row["hcc_description"] = hcc_descriptions.get(int(row["hcc_v28"]), "Unknown")
         row["suspect_type"] = row["gap_type"]
         row["latest_context"] = latest_context(row["gap_type"], row["hcc_v28"], latest_hccs, row["bene_id"])
-        row["priority"] = assign_priority(row["priority_score"])
-        row["priority_level"] = row["priority"]
         row["reason_flags"] = reason_flags(row)
         row["evidence_summary"] = evidence_summary(row)
         rows.append(row)
 
-    output = pd.DataFrame(rows).sort_values("priority_score", ascending=False).reset_index(drop=True)
+    output = pd.DataFrame(rows).sort_values(["bene_id", "hcc_v28"]).reset_index(drop=True)
+    column_order = [
+        "bene_id", "hcc_v28", "hcc_description", "gap_type", "suspect_type", "status", "latest_context",
+        "diagnosis_count", "unique_claim_count", "unique_event_count", "first_evidence_date", "last_evidence_date",
+        "distinct_evidence_dates", "distinct_evidence_months", "distinct_sources", "principal_diagnosis_count",
+        "supporting_diagnosis_codes", "supporting_claim_ids", "prescription_support_count", "prescription_drug_codes",
+        "frequency_score", "recency_score", "persistence_score", "repeated_claim_score", "repeated_date_score",
+        "source_diversity_score", "principal_score", "prescription_score", "reason_flags", "evidence_summary",
+        "evidence_references"
+    ]
+    output = output[column_order]
+
     csv_output = output.copy()
     for column in ["supporting_diagnosis_codes", "supporting_claim_ids", "prescription_drug_codes", "evidence_references", "reason_flags"]:
         csv_output[column] = csv_output[column].apply(json.dumps)
+
     csv_output.to_csv(OUTPUT_FILE, index=False)
 
     llm_payload = {
         "schema_version": "1.0",
         "purpose": "Evidence-grounded reviewer explanation input",
-        "instructions": "Summarize only the supplied evidence. Do not invent diagnoses, evidence, or clinical conclusions. Preserve the priority score and recommend human record review.",
+        "instructions": "Summarize only the supplied evidence. Do not invent diagnoses, evidence, or clinical conclusions. Recommend human record review.",
         "candidates": [build_llm_record(row) for row in rows],
     }
     LLM_INPUT_FILE.write_text(json.dumps(llm_payload, indent=2), encoding="utf-8")
@@ -330,11 +357,10 @@ def main() -> None:
     print(f"Current mapped-diagnosis members: {len(current_hccs):,}")
     print(f"Total suspects: {len(output):,}")
     print(output["suspect_type"].value_counts().to_string())
-    print("Priority counts:")
-    print(output["priority"].value_counts().reindex(["HIGH", "MEDIUM", "LOW"], fill_value=0).to_string())
     print(f"CSV output: {OUTPUT_FILE}")
     print(f"LLM input: {LLM_INPUT_FILE}")
 
 
 if __name__ == "__main__":
     main()
+

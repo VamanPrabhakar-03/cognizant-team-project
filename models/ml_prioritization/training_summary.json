@@ -1,0 +1,36 @@
+{
+  "training_file": "data\\ml_training\\suspects_clean_ready_for_augmentation_with_severity.csv",
+  "scoring_file": "data\\suspects_with_evidence_final.csv",
+  "rows": 1175,
+  "test_rows": 235,
+  "class_distribution": {
+    "HIGH": 852,
+    "MEDIUM": 178,
+    "LOW": 145
+  },
+  "features": [
+    "diagnosis_count",
+    "unique_claim_count",
+    "unique_event_count",
+    "distinct_evidence_dates",
+    "distinct_evidence_months",
+    "distinct_sources",
+    "principal_diagnosis_count",
+    "prescription_support_count",
+    "frequency_score",
+    "recency_score",
+    "persistence_score",
+    "repeated_claim_score",
+    "repeated_date_score",
+    "source_diversity_score",
+    "principal_score",
+    "prescription_score"
+  ],
+  "best_model": "Logistic Regression",
+  "scored_rows": 1175,
+  "scored_priority_distribution": {
+    "LOW": 532,
+    "HIGH": 447,
+    "MEDIUM": 196
+  }
+}

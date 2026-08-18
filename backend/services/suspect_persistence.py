@@ -75,6 +75,7 @@ def persist_engine_candidates(
     run_id: str,
     candidates: Iterable[Mapping[str, Any]],
     llm_candidates: Optional[Iterable[Mapping[str, Any]]] = None,
+    llm_summaries: Optional[Iterable[Mapping[str, Any]]] = None,
 ) -> dict[str, int]:
     """Upsert engine candidates and append run-specific evidence/LLM records.
 
@@ -87,10 +88,11 @@ def persist_engine_candidates(
         raise ValueError(f"Pipeline run not found: {run_id}")
 
     llm_by_key = {_llm_key(row): row for row in (llm_candidates or [])}
+    summaries_list = list(llm_summaries or [])
     counts = {"suspects": 0, "evidence": 0, "llm_reviews": 0}
 
     try:
-        for row in candidates:
+        for idx, row in enumerate(candidates):
             bene_id = str(row.get("bene_id") or "").strip()
             if not bene_id or db.get(Member, bene_id) is None:
                 raise ValueError(f"Engine output references unknown bene_id: {bene_id}")
@@ -102,6 +104,13 @@ def persist_engine_candidates(
             reason_flags = _collection(row.get("reason_flags"))
             evidence_references = _collection(row.get("evidence_references"))
             prescription_codes = _collection(row.get("prescription_drug_codes"))
+
+            # Match LLM summary
+            llm_summary = summaries_list[idx] if idx < len(summaries_list) else None
+            clinical_summary = (
+                (llm_summary.get("reviewer_summary") if llm_summary else None)
+                or row.get("evidence_summary")
+            )
 
             suspect = db.get(Suspect, suspect_id)
             if suspect is None:
@@ -149,8 +158,16 @@ def persist_engine_candidates(
             suspect.source_diversity_score = _number(row, "source_diversity_score")
             suspect.principal_score = _number(row, "principal_score")
             suspect.prescription_score = _number(row, "prescription_score")
+            suspect.ml_priority = row.get("ml_priority")
+            suspect.ml_priority_score = _number(row, "ml_priority_score", None) if row.get("ml_priority_score") is not None else None
+            suspect.ml_low_probability = _number(row, "ml_low_probability", None) if row.get("ml_low_probability") is not None else None
+            suspect.ml_medium_probability = _number(row, "ml_medium_probability", None) if row.get("ml_medium_probability") is not None else None
+            suspect.ml_high_probability = _number(row, "ml_high_probability", None) if row.get("ml_high_probability") is not None else None
+            suspect.ml_model_version = row.get("ml_model_version")
+            suspect.ml_review_rank = _integer(row, "ml_review_rank") if row.get("ml_review_rank") is not None else None
+            suspect.ml_top_100 = bool(row.get("ml_top_100")) if row.get("ml_top_100") is not None else None
             suspect.reason_flags = reason_flags
-            suspect.evidence_summary = row.get("evidence_summary")
+            suspect.evidence_summary = clinical_summary
             suspect.evidence_references = evidence_references
             counts["suspects"] += 1
 
@@ -170,7 +187,7 @@ def persist_engine_candidates(
                         diagnosis_code=reference.get("diagnosis_code"),
                         claim_id=reference.get("claim_id"),
                         source=reference.get("source"),
-                        evidence_text=row.get("evidence_summary"),
+                        evidence_text=clinical_summary,
                         evidence_strength=_number(row, "priority_score"),
                         evidence_metadata=reference,
                     )
@@ -178,7 +195,22 @@ def persist_engine_candidates(
                 counts["evidence"] += 1
 
             llm_row = llm_by_key.get(_llm_key(row))
-            if llm_row is not None:
+            if llm_summary is not None:
+                db.add(
+                    LLMReview(
+                        suspect_id=suspect_id,
+                        pipeline_run_id=run_id,
+                        status=llm_summary.get("status", "COMPLETED"),
+                        model_name=llm_summary.get("model_name", "Clinical-Inference-Synthesizer-v28"),
+                        prompt_version="1.0",
+                        input_payload=dict(llm_row) if llm_row else None,
+                        output_payload=llm_summary.get("output_payload"),
+                        reviewer_summary=llm_summary.get("reviewer_summary"),
+                        generated_at=datetime.utcnow(),
+                    )
+                )
+                counts["llm_reviews"] += 1
+            elif llm_row is not None:
                 db.add(
                     LLMReview(
                         suspect_id=suspect_id,

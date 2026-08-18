@@ -6,3 +6,5 @@ pydantic
 python-dotenv
 sqlalchemy
 uvicorn
+scikit-learn
+joblib
