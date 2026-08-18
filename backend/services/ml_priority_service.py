@@ -23,8 +23,13 @@ _MODEL = None
 def _model():
     global _MODEL
     if _MODEL is None:
+        import warnings
         import joblib
-        _MODEL = joblib.load(MODEL_PATH)
+        from sklearn.exceptions import InconsistentVersionWarning
+
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=InconsistentVersionWarning)
+            _MODEL = joblib.load(MODEL_PATH)
     return _MODEL
 
 

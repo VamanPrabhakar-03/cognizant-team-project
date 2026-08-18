@@ -44,21 +44,19 @@ export function ReviewsPage({ onSelectSuspect }) {
     return (
       String(r.bene_id).toLowerCase().includes(q) ||
       String(r.hcc_v28).toLowerCase().includes(q) ||
-      String(r.reviewer_id).toLowerCase().includes(q) ||
       (r.notes || '').toLowerCase().includes(q)
     );
   });
 
   const exportCsv = () => {
     if (filteredReviews.length === 0) return;
-    const headers = ['Review ID', 'Bene ID', 'HCC Code', 'Decision', 'Reviewer', 'Timestamp', 'Notes'];
+    const headers = ['Review ID', 'Bene ID', 'HCC Code', 'Decision', 'Timestamp', 'Notes'];
     const rows = filteredReviews.map((r) => [
-      r.review_id,
+      r.id,
       r.bene_id,
       r.hcc_v28,
       r.decision,
-      r.reviewer_id,
-      r.reviewed_at,
+      r.reviewer_timestamp,
       `"${(r.notes || '').replace(/"/g, '""')}"`,
     ]);
     const csvContent = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
@@ -171,7 +169,7 @@ export function ReviewsPage({ onSelectSuspect }) {
                       className="hover:bg-surface-container-low/70 transition-colors group cursor-pointer"
                     >
                       <td className="p-4 font-mono text-xs text-on-surface-variant font-bold">
-                        {r.review_id}
+                        #{r.id ?? '—'}
                       </td>
                       <td className="p-4 font-mono font-bold text-primary">
                         {r.bene_id}
@@ -190,10 +188,10 @@ export function ReviewsPage({ onSelectSuspect }) {
                         </Badge>
                       </td>
                       <td className="p-4 font-manrope text-xs font-semibold text-on-surface">
-                        {r.reviewer_id || 'Dr. S. Chen'}
+                        {r.reviewer_id || 'Human Reviewer'}
                       </td>
                       <td className="p-4 font-mono text-xs text-on-surface-variant whitespace-nowrap">
-                        {formatDate(r.reviewed_at)}
+                        {formatDate(r.reviewer_timestamp)}
                       </td>
                       <td className="p-4 text-xs text-on-surface-variant truncate max-w-xs">
                         {r.notes || 'Reviewed without extra notes.'}

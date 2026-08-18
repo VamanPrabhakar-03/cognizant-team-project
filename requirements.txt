@@ -4,6 +4,7 @@ pandas
 psycopg[binary]
 pydantic
 python-dotenv
+python-multipart
 sqlalchemy
 uvicorn
 scikit-learn

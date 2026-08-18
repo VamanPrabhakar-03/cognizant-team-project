@@ -1,14 +1,34 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
 const STAGES = [
-  { label: 'Ingested', icon: 'download', desc: 'Batch validated & inserted' },
-  { label: 'Processed', icon: 'transform', desc: 'Diagnosis codes crosswalked' },
-  { label: 'Suspects', icon: 'neurology', desc: '8-Signal scoring engine' },
-  { label: 'Evidence', icon: 'file_present', desc: 'Atomic claim references linked' },
-  { label: 'LLM Ready', icon: 'done_all', desc: 'Structured prompt stored' },
+  { id: 1, label: 'Unpack & Cleanse', icon: 'inventory_2', desc: 'Explode wide ICD columns & normalize dates' },
+  { id: 2, label: 'V28 Crosswalk', icon: 'schema', desc: 'ICD-10 to CMS-HCC mapping & timeline link' },
+  { id: 3, label: 'Gap Detection', icon: 'difference', desc: 'Compare vs 2-year historical member baseline' },
+  { id: 4, label: 'ML Prioritization', icon: 'model_training', desc: '8-signal feature scoring & SVM inference' },
+  { id: 5, label: 'LLM Synthesis', icon: 'neurology', desc: 'AI clinical rationale & audit checklist' },
+  { id: 6, label: 'Queue Ready', icon: 'checklist', desc: 'Rank-ordered in human reviewer workspace' },
 ];
 
-export function PipelineStages({ currentStatus = 'COMPLETED', suspectsCount = 0 }) {
+export function PipelineStages({ isUploading = false, currentStatus = 'IDLE', result = null }) {
+  const [activeStage, setActiveStage] = useState(1);
+
+  useEffect(() => {
+    let interval = null;
+    if (isUploading) {
+      setActiveStage(1);
+      interval = setInterval(() => {
+        setActiveStage((prev) => (prev < 5 ? prev + 1 : 5));
+      }, 1200);
+    } else if (result) {
+      setActiveStage(6);
+    } else {
+      setActiveStage(0);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isUploading, result]);
+
   const isFailed = currentStatus === 'FAILED';
 
   return (
@@ -19,40 +39,64 @@ export function PipelineStages({ currentStatus = 'COMPLETED', suspectsCount = 0 
             Pipeline Architecture
           </span>
           <h3 className="font-manrope text-lg font-bold text-on-surface">
-            Automated Execution Stages
+            Automated Execution Lifecycle
           </h3>
         </div>
-        <div className="flex items-center gap-1.5 px-3 py-1 bg-primary/10 text-primary border border-primary/20 rounded-full font-mono text-xs font-semibold">
-          <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-          <span>Status: {currentStatus}</span>
+        <div className="flex items-center gap-1.5 px-3 py-1 bg-surface border border-outline-variant/20 rounded-full font-mono text-xs font-semibold">
+          {isUploading ? (
+            <>
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+              <span className="text-amber-700">Stage {activeStage} of 6: Processing</span>
+            </>
+          ) : result ? (
+            <>
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              <span className="text-emerald-700">Completed · {result.suspects || 0} Suspects Generated</span>
+            </>
+          ) : (
+            <>
+              <span className="w-2 h-2 rounded-full bg-outline/50" />
+              <span className="text-on-surface-variant">Awaiting Ingestion</span>
+            </>
+          )}
         </div>
       </div>
 
-      <div className="relative flex justify-between items-start pt-2 px-2">
-        {/* Connecting Progress Line */}
-        <div className="absolute top-[28px] left-[8%] right-[8%] h-[3px] bg-surface-container-high -z-0">
-          <div
-            className={`h-full transition-all duration-700 ${
-              isFailed ? 'bg-error' : 'bg-primary'
-            }`}
-            style={{ width: isFailed ? '40%' : '100%' }}
-          />
-        </div>
+      {/* Progressive Step View */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        {STAGES.map((stage) => {
+          const isDone = activeStage > stage.id || (!isUploading && result && !isFailed);
+          const isCurrent = isUploading && activeStage === stage.id;
+          const isPending = activeStage < stage.id && !result;
 
-        {STAGES.map((stage, idx) => {
           return (
-            <div key={stage.label} className="relative z-10 flex flex-col items-center text-center gap-2 max-w-[100px]">
+            <div
+              key={stage.id}
+              className={`p-3 rounded-xl border flex flex-col items-center text-center transition-all ${
+                isCurrent
+                  ? 'bg-primary/10 border-primary shadow-xs scale-[1.02]'
+                  : isDone
+                    ? 'bg-emerald-50/60 border-emerald-200 text-emerald-900'
+                    : 'bg-surface-container-low border-outline-variant/15 opacity-60'
+              }`}
+            >
               <div
-                className={`w-12 h-12 rounded-full flex items-center justify-center shadow-sm font-bold text-on-primary transition-all ${
-                  isFailed && idx >= 2 ? 'bg-surface-container-high text-outline' : 'bg-primary text-on-primary'
+                className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 font-bold transition-all ${
+                  isCurrent
+                    ? 'bg-primary text-on-primary animate-bounce'
+                    : isDone
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-surface-container-high text-outline'
                 }`}
               >
-                <span className="material-symbols-outlined text-[22px]">{stage.icon}</span>
+                <span className="material-symbols-outlined text-[20px]">
+                  {isDone ? 'check' : stage.icon}
+                </span>
               </div>
-              <span className="font-mono text-xs font-bold text-on-surface uppercase tracking-wider">
+              <span className="font-mono text-[11px] font-bold text-on-surface uppercase tracking-wide">
                 {stage.label}
               </span>
-              <span className="text-[11px] text-on-surface-variant leading-tight">
+              <span className="text-[10px] text-on-surface-variant leading-tight mt-1">
                 {stage.desc}
               </span>
             </div>

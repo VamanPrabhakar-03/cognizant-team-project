@@ -1,15 +1,22 @@
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 
+/**
+ * Universal API request helper.
+ * If body is FormData, leaves Content-Type unset so the browser sets multipart boundaries.
+ * Otherwise defaults Content-Type to application/json.
+ */
 export async function request(path, options = {}) {
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
   const url = cleanPath.startsWith('http') ? cleanPath : `${API_BASE}${cleanPath}`;
-  
+
+  const isFormData = options.body instanceof FormData;
+  const headers = isFormData
+    ? { ...(options.headers || {}) }
+    : { 'Content-Type': 'application/json', ...(options.headers || {}) };
+
   const response = await fetch(url, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
-    },
     ...options,
+    headers,
   });
 
   const contentType = response.headers.get('content-type') || '';
@@ -26,7 +33,7 @@ export async function request(path, options = {}) {
       }
     } else {
       const text = await response.text();
-      if (text) errorDetail = text.slice(0, 100);
+      if (text) errorDetail = text.slice(0, 200);
     }
     const err = new Error(errorDetail);
     err.status = response.status;
@@ -38,6 +45,9 @@ export async function request(path, options = {}) {
   }
   return response.text();
 }
+
+/** Alias for raw requests */
+export const apiClient = request;
 
 export function parseCsv(text) {
   const lines = text.trim().split(/\r?\n/).filter(Boolean);

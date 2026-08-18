@@ -133,13 +133,37 @@ def generate_llm_summary_for_candidate(
     llm_payload: Optional[Mapping[str, Any]] = None,
 ) -> dict[str, Any]:
     """Generate structured LLM clinical documentation summary for a single candidate."""
-    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    raw_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or ""
+    api_key = raw_key.strip()
     if api_key:
+        payload_data = dict(llm_payload) if llm_payload else dict(candidate)
         prompt = (
-            "You are a Clinical Risk Adjustment Auditor for Medicare Advantage CMS-HCC V28.\n"
-            "Summarize the following suspected candidate HCC documentation based ONLY on the provided evidence.\n"
-            f"Data: {json.dumps(dict(candidate), default=str)}\n"
-            "Respond in JSON format with keys: 'clinical_narrative', 'evidence_breakdown' (list), 'verification_checklist' (list)."
+            "You are an expert Clinical Risk Adjustment Auditor and Medical Coder specializing in CMS-HCC Model V28.\n"
+            "Analyze the following suspected HCC documentation gap candidate and generate an audit rationale.\n\n"
+            f"=== SUSPECT CANDIDATE EVIDENCE ===\n"
+            f"{json.dumps(payload_data, default=str, indent=2)}\n\n"
+            "=== AUDIT INSTRUCTIONS ===\n"
+            "1. Ground all statements strictly in the provided atomic claim dates, sources, and diagnosis codes. Do not fabricate clinical data.\n"
+            "2. Explain clearly whether this is an EMERGING gap (new condition not in 2-year baseline) or RECAPTURE gap (historical condition needing annual re-documentation).\n"
+            "3. Reference the ML Priority assessment and 8-signal scoring features (recency, persistence, multi-source corroboration, prescription support).\n"
+            "4. Provide specific, actionable items for the medical record reviewer to verify CMS MEAT criteria (Monitor, Evaluate, Assess, Treat).\n\n"
+            "=== REQUIRED JSON OUTPUT SCHEMA ===\n"
+            "You MUST respond ONLY with a valid JSON object matching this exact structure:\n"
+            "{\n"
+            '  "summary_title": "<GAP_TYPE> Gap: <HCC_DESCRIPTION> (HCC <HCC_NUMBER>)",\n'
+            '  "clinical_narrative": "<Concise 2-3 sentence clinical summary grounded in evidence>",\n'
+            '  "evidence_breakdown": [\n'
+            '    "<Bullet point 1 detailing dates, claims count, and source types>",\n'
+            '    "<Bullet point 2 detailing principal diagnoses and ICD-10 codes>",\n'
+            '    "<Bullet point 3 detailing pharmacy / therapy corroboration if present>"\n'
+            '  ],\n'
+            '  "verification_checklist": [\n'
+            '    "<Actionable item 1 to verify in medical record>",\n'
+            '    "<Actionable item 2 verifying provider signature, MEAT criteria, and documentation validity>",\n'
+            '    "<Actionable item 3 for coding compliance>"\n'
+            '  ],\n'
+            '  "recommendation": "<Specific next step for risk adjustment compliance submission>"\n'
+            "}"
         )
         gemini_result = _call_gemini_api(api_key, candidate, prompt)
         if gemini_result is not None:
@@ -148,22 +172,29 @@ def generate_llm_summary_for_candidate(
     return _generate_clinical_summary_deterministic(candidate, llm_payload)
 
 
+
 def generate_candidate_summaries(
     candidates: list[dict[str, Any]],
     llm_candidates: Optional[list[dict[str, Any]]] = None,
+    max_workers: int = 15,
 ) -> list[dict[str, Any]]:
-    """Batch generate LLM clinical summaries for all candidates in the pipeline run."""
+    """Parallel batch generate LLM clinical summaries for all candidates in seconds."""
+    from concurrent.futures import ThreadPoolExecutor
+
     llm_lookup = {}
     if llm_candidates:
         for item in llm_candidates:
             key = (str(item.get("bene_id")), str(item.get("hcc_v28")), str(item.get("gap_type") or "").upper())
             llm_lookup[key] = item
 
-    results = []
-    for cand in candidates:
+    def _worker(cand: dict[str, Any]) -> dict[str, Any]:
         key = (str(cand.get("bene_id")), str(cand.get("hcc_v28")), str(cand.get("gap_type") or cand.get("suspect_type") or "").upper())
         item_payload = llm_lookup.get(key)
-        summary = generate_llm_summary_for_candidate(cand, item_payload)
-        results.append(summary)
+        return generate_llm_summary_for_candidate(cand, item_payload)
+
+    # Process candidates concurrently in parallel threads
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        results = list(executor.map(_worker, candidates))
 
     return results
+
