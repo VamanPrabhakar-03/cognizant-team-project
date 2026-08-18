@@ -118,7 +118,7 @@ def _call_gemini_api(api_key: str, candidate: Mapping[str, Any], prompt: str) ->
             parsed = json.loads(text)
             summary_text = parsed.get("clinical_narrative") or parsed.get("reviewer_summary") or str(parsed)
             return {
-                "model_name": "gemini-1.5-flash",
+                "model_name": "gemini-3.5-flash",
                 "status": "COMPLETED",
                 "generated_at": datetime.utcnow().isoformat(),
                 "reviewer_summary": summary_text,
